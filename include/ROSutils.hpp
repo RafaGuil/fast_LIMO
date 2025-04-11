@@ -30,6 +30,7 @@
 
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <sensor_msgs/msg/imu.hpp>
+#include <common_msgs/msg/state.hpp>
 
 #include <visualization_msgs/msg/marker_array.hpp>
 #include <visualization_msgs/msg/marker.hpp>
@@ -40,6 +41,7 @@
 
 #include <tf2/convert.h>
 #include <tf2_ros/transform_broadcaster.h>
+#include <tf2/LinearMath/Quaternion.h>
 #include <Eigen/Geometry>
 
 #include <geometry_msgs/msg/quaternion_stamped.hpp>
@@ -48,3 +50,4 @@
 #include <geometry_msgs/msg/transform_stamped.hpp>
 
 #include <pcl_conversions/pcl_conversions.h>
+#include <PointXYZIRingTime.h>

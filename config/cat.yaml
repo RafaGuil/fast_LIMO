@@ -5,7 +5,9 @@ fast_limo:
     topics:
       input:
         lidar: /velodyne_points
-        imu: /EL/Sensors/vectornav/IMU
+        imu: /vectornav/IMU
+        state: /none
+
       # output:
 
     frames: # output frames (the transform between frames will be broadcasted)

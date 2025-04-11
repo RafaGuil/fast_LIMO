@@ -80,7 +80,7 @@ std::string to_string_with_precision(const T a_value, const int n = 6)
 #include <pcl/pcl_config.h>
 
 namespace fast_limo {
-  enum class SensorType { OUSTER, VELODYNE, HESAI, LIVOX, UNKNOWN };
+  enum class SensorType { OUSTER, VELODYNE, HESAI, LIVOX, RSLIDAR, UNKNOWN };
 
     // MODULES
   class Localizer;
@@ -96,8 +96,8 @@ namespace fast_limo {
 
     // STRUCTURES
   struct Point {
-    Point(): data{0.f, 0.f, 0.f, 1.f} {}
-    Point(float x, float y, float z): data{x, y, z, 1.f} {}
+    Point(): data{0.f, 0.f, 0.f, 1.f}, ring(0) {} // se inicializa ring
+    Point(float x, float y, float z): data{x, y, z, 1.f}, ring(0) {} // se inicializa ring
 
     PCL_ADD_POINT4D;
     float intensity;
@@ -107,6 +107,7 @@ namespace fast_limo {
       double timestamp;  // (Hesai) absolute timestamp in seconds
                          // (Livox) absolute timestamp in (seconds * 10e9)
     };
+    int ring; // agregado: información de anillo
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   } EIGEN_ALIGN16;
 
@@ -158,7 +159,8 @@ POINT_CLOUD_REGISTER_POINT_STRUCT(fast_limo::Point,
                                  (float, intensity, intensity)
                                  (std::uint32_t, t, t)
                                  (float, time, time)
-                                 (double, timestamp, timestamp))
+                                 (double, timestamp, timestamp)
+                                 (int, ring, ring)) // agregado el campo ring
 
 typedef fast_limo::Point PointType;
 typedef pcl::PointXYZ MapPoint;

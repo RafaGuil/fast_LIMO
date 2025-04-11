@@ -34,6 +34,7 @@ namespace ros2wrap {
                 // subscribers
             rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr lidar_sub_;
             rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr         imu_sub_;
+            rclcpp::Subscription<common_msgs::msg::State>::SharedPtr       state_sub_;
 
                 // main publishers
             rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pc_pub;
@@ -81,6 +82,8 @@ namespace ros2wrap {
                                     config.topics.lidar, 1, std::bind(&LimoWrapper::lidar_callback, this, std::placeholders::_1), lidar_opt);
                     imu_sub_   = this->create_subscription<sensor_msgs::msg::Imu>(
                                     config.topics.imu, 1000, std::bind(&LimoWrapper::imu_callback, this, std::placeholders::_1), imu_opt);
+                    state_sub_ = this->create_subscription<common_msgs::msg::State>(
+                                    config.topics.state, 1, std::bind(&LimoWrapper::state_callback, this, std::placeholders::_1), imu_opt);
                     
                     // Set up publishers
                     pc_pub      = this->create_publisher<sensor_msgs::msg::PointCloud2>("/fast_limo/pointcloud", 1);
@@ -118,6 +121,8 @@ namespace ros2wrap {
 
                 pcl::PointCloud<PointType>::Ptr pc_ (std::make_shared<pcl::PointCloud<PointType>>());
                 pcl::fromROSMsg(msg, *pc_);
+
+                RCLCPP_INFO(this->get_logger(), "PCL Size: %d", pc_->points.size());
 
                 loc.updatePointCloud(pc_, rclcpp::Time(msg.header.stamp).seconds());
 
@@ -189,6 +194,35 @@ namespace ros2wrap {
                     this->broadcastTF(loc.getWorldState(), world_frame, body_frame, true);
             }
 
+            void state_callback(const common_msgs::msg::State & msg) {
+
+                fast_limo::Localizer& loc = fast_limo::Localizer::getInstance();
+                RCLCPP_INFO(this->get_logger(), "Received state message");
+
+                fast_limo::IMUmeas imu;
+                imu.stamp = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9;
+                imu.ang_vel = Eigen::Vector3f(0.0, 0.0, msg.r);
+                imu.lin_accel = Eigen::Vector3f(msg.ax, msg.ay, 0.0);
+                tf2::Quaternion q;
+                q.setRPY(0.0, 0.0, msg.yaw);
+                imu.q = Eigen::Quaternionf(q.w(), q.x(), q.y(), q.z());
+
+                // Propagate IMU measurement
+                loc.updateIMU(imu);
+
+                // State publishing
+                nav_msgs::msg::Odometry state_msg, body_msg;
+                this->fromLimoToROS(loc.getWorldState(), loc.getPoseCovariance(), loc.getTwistCovariance(), state_msg);
+                this->fromLimoToROS(loc.getBodyState(), loc.getPoseCovariance(), loc.getTwistCovariance(), body_msg);
+
+                this->state_pub->publish(state_msg);
+                this->body_pub->publish(body_msg);
+
+                // TF broadcasting
+                if(this->publish_tf)
+                    this->broadcastTF(loc.getWorldState(), world_frame, body_frame, true);
+            }
+
         /* ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// 
            ///////////////////////////////////////             Load params          ///////////////////////////////////////////////////////////// 
            ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// */
@@ -198,8 +232,10 @@ namespace ros2wrap {
                 // Topics
                 rclcpp::Parameter lidar_topic_p = this->get_parameter("topics.input.lidar");
                 rclcpp::Parameter imu_topic_p   = this->get_parameter("topics.input.imu");
+                rclcpp::Parameter state_topic_p = this->get_parameter("topics.input.state");
                 config->topics.lidar = lidar_topic_p.as_string();
                 config->topics.imu = imu_topic_p.as_string();
+                config->topics.state = state_topic_p.as_string();
 
                 // Frames
                 rclcpp::Parameter world_p = this->get_parameter("frames.world");
@@ -473,6 +509,22 @@ namespace ros2wrap {
                                         << "                  y: FLOAT32 (y coordinate in meters)\n"
                                         << "                  z: FLOAT32 (z coordinate in meters)\n"
                                         << "                  timestamp: FLOAT64 (time since beginning of scan in seconds/nanoseconds if HESAI/LIVOX)\n"
+                                        << "-------------------------------------------------------------------\n"
+                                        );
+            
+                } else if (sensor == fast_limo::SensorType::RSLIDAR) {
+                    for(size_t i=0; i < msg.fields.size(); i++){
+                        if(msg.fields[i].name == "timestamp")
+                            return true;
+                    }
+
+                    RCLCPP_ERROR_STREAM(this->get_logger(), "\n-------------------------------------------------------------------\n" 
+                                        << "FAST_LIMO::FATAL ERROR: the received pointcloud MUST have a timestamp field available!\n"
+                                        << "          Remember that for RSLIDAR alike pointclouds, the expected fields are:\n"
+                                        << "                  x: FLOAT32 (x coordinate in meters)\n"
+                                        << "                  y: FLOAT32 (y coordinate in meters)\n"
+                                        << "                  z: FLOAT32 (z coordinate in meters)\n"
+                                        << "                  timestamp: FLOAT64 (time since beginning of scan in seconds/nanoseconds if RSLIDAR)\n"
                                         << "-------------------------------------------------------------------\n"
                                         );
             

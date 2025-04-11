@@ -709,7 +709,7 @@
             init_P(6,6) = init_P(7,7) = init_P(8,8) = 0.000001;
             init_P(9,9) = init_P(10,10) = init_P(11,11) = 0.000001;
             init_P(15,15) = init_P(16,16) = init_P(17,17) = 0.00001;
-            init_P(18,18) = init_P(19,19) = init_P(20,20) = 0.0001;
+            init_P(18,18) = init_P(19,19) = 0.0001;
             init_P(21,21) = init_P(22,22) = 0.000001; 
             
             this->_iKFoM.change_P(init_P);
@@ -797,6 +797,12 @@
                 { return p1.timestamp < p2.timestamp; };
                 extract_point_time = [](PointType& pt)
                 { return pt.timestamp * 1e-9f; };
+            } else if (this->sensor == fast_limo::SensorType::RSLIDAR) {
+                
+                point_time_cmp = [](const PointType& p1, const PointType& p2)
+                { return p1.timestamp < p2.timestamp; };
+                extract_point_time = [start_time](PointType& pt) -> double {
+                return start_time + pt.timestamp; };
             } else {
                 std::cout << "-------------------------------------------------------------------\n";
                 std::cout << "FAST_LIMO::FATAL ERROR: LiDAR sensor type unknown or not specified!\n";
@@ -1103,6 +1109,11 @@
             } else if (this->sensor == fast_limo::SensorType::LIVOX) {
                 std::cout << "| " << std::left << std::setfill(' ') << std::setw(66)
                 << "Sensor Rates: Livox @ " + to_string_with_precision(avg_lidar_rate, 2)
+                                            + " Hz, IMU @ " + to_string_with_precision(avg_imu_rate, 2) + " Hz"
+                << "|" << std::endl;
+            } else if (this->sensor == fast_limo::SensorType::RSLIDAR) {
+                std::cout << "| " << std::left << std::setfill(' ') << std::setw(66)
+                << "Sensor Rates: RSLiDAR @ " + to_string_with_precision(avg_lidar_rate, 2)
                                             + " Hz, IMU @ " + to_string_with_precision(avg_imu_rate, 2) + " Hz"
                 << "|" << std::endl;
             } else {

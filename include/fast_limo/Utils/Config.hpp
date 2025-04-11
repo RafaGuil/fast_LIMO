@@ -25,6 +25,7 @@ struct fast_limo::Config{
     struct Topics{
         std::string lidar;
         std::string imu;
+        std::string state;
     } topics;
 
     struct Extrinsics{
